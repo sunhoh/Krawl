@@ -6,7 +6,14 @@ import { fetchScrapeData, fetchSearchData } from '@/api/query';
 import { ResultSection } from '@/component/common/ResultSection';
 import BaseHead from '@/component/layout/base-head';
 import BaseLayout from '@/component/layout/base-layout';
-import { Engine, Metadata, SearchRankData } from '@/types/global';
+import { Engine, Metadata } from '@/types/global';
+import { SearchRankData } from '@/types/table.type';
+
+interface SearchApiResponse {
+  success: boolean;
+  data: SearchRankData[];
+  keyword: string;
+}
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'Scrape' | 'Search'>('Scrape');
@@ -16,8 +23,10 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const [scrapeHistory, setScrapeHistory] = useState<Metadata[]>([]);
-  const [searchHistory, setSearchHistory] = useState<SearchRankData[]>([]);
+  const [scrapeHistory, setScrapeHistory] = useState<
+    (Metadata & { requestUrl: string; scrapeId?: string })[]
+  >([]);
+  const [searchHistory, setSearchHistory] = useState<SearchApiResponse>();
 
   const engine: Engine = useMemo(
     () => (activePortalTab === 'N' ? 'naver' : 'google'),
@@ -34,17 +43,18 @@ export default function Home() {
 
     try {
       if (activeTab === 'Search') {
-        // const result = await fetchSerpData(trimmed, engine);
-        // setSearchHistory(prev => [result, ...prev]);
         const result = await fetchSearchData(trimmed, engine);
-        // TODO: API 응답 형식을 SearchRankData[]로 변환 필요
-        setSearchHistory([result as unknown as SearchRankData]);
+        setSearchHistory(result);
       } else {
-        if (!trimmed.startsWith('http')) {
-          throw new Error('올바른 URL 형식을 입력하세요. (https://...)');
+        const requestUrl = `https://${trimmed}`;
+        if (!trimmed.includes('.')) {
+          throw new Error('올바른 도메인 형식을 입력하세요. (예: example.com)');
         }
-        const result = await fetchScrapeData(trimmed);
-        setScrapeHistory(prev => [{ ...result, requestUrl: trimmed }, ...prev]);
+        const result = await fetchScrapeData(requestUrl);
+        setScrapeHistory(prev => [
+          { ...result, requestUrl: requestUrl },
+          ...prev,
+        ]);
       }
       setValue('');
     } catch (e: unknown) {
@@ -57,6 +67,9 @@ export default function Home() {
 
   return (
     <BaseLayout>
+      <div className='mb-12 text-center text-4xl font-bold'>
+        <h1></h1>
+      </div>
       <BaseHead
         value={value}
         setValue={setValue}
@@ -71,8 +84,8 @@ export default function Home() {
       />
       <ResultSection
         activeTab={activeTab}
-        searchHistory={searchHistory}
-        scrapeHistory={scrapeHistory}
+        loading={loading}
+        data={activeTab === 'Search' ? searchHistory : scrapeHistory}
       />
     </BaseLayout>
   );

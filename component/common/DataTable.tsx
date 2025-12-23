@@ -1,5 +1,7 @@
-import { TableColumn } from '@/configs';
+import React from 'react';
+
 import { cn } from '@/libs/utils';
+import { TableColumn } from '@/types/table.type';
 
 interface DataTableProps<T extends Record<string, unknown>> {
   data: T[];
@@ -8,6 +10,11 @@ interface DataTableProps<T extends Record<string, unknown>> {
   highlightCondition?: (row: T) => boolean;
   highlightClassName?: string;
   className?: string;
+  onRowClick?: (row: T, index: number) => void;
+  expandableRows?: boolean;
+  expandedRows?: Set<string | number>;
+  onToggleRow?: (rowId: string | number) => void;
+  renderExpandedContent?: (row: T, index: number) => React.ReactNode;
 }
 
 export function DataTable<T extends Record<string, unknown>>({
@@ -15,8 +22,13 @@ export function DataTable<T extends Record<string, unknown>>({
   columns,
   emptyMessage = 'No data found.',
   highlightCondition,
-  highlightClassName = 'bg-blue-50/30 shadow-[0_0_20px_rgba(59,130,246,0.5)] ring-2 ring-blue-500 ring-inset',
+  highlightClassName = 'animate-rainbow-glow relative z-10 !border-transparent transition-all duration-500 font-bold bg-white',
   className,
+  onRowClick,
+  expandableRows = false,
+  expandedRows = new Set(),
+  onToggleRow,
+  renderExpandedContent,
 }: DataTableProps<T>) {
   const renderCell = (
     column: TableColumn<T>,
@@ -68,7 +80,7 @@ export function DataTable<T extends Record<string, unknown>>({
             rel='noopener noreferrer'
             className='inline-block rounded bg-zinc-800 px-2 py-1 text-white transition hover:bg-black'
           >
-            View Map
+            Map
           </a>
         );
 
@@ -80,7 +92,7 @@ export function DataTable<T extends Record<string, unknown>>({
   return (
     <div
       className={cn(
-        'w-full overflow-hidden rounded-xl border border-gray-300 bg-white',
+        'w-full overflow-visible border border-[#e5e7eb] bg-white',
         className,
       )}
     >
@@ -101,30 +113,66 @@ export function DataTable<T extends Record<string, unknown>>({
 
           <tbody>
             {data.length > 0 ? (
-              data.map((row, rowIndex) => (
-                <tr
-                  key={'id' in row ? String(row.id) : String(rowIndex)}
-                  className={cn(
-                    'border-t border-zinc-200 transition hover:bg-zinc-50',
-                    'isAd' in row && Boolean(row.isAd) ? 'bg-amber-50/50' : '',
-                    highlightCondition?.(row) && highlightClassName,
-                  )}
-                >
-                  {columns.map((column, colIndex) => {
-                    const value = row[column.key as keyof T];
-                    const renderedValue = renderCell(column, value, row);
+              data.map((row, rowIndex) => {
+                const rowId =
+                  'id' in row ? (row.id as string | number) : rowIndex;
+                const isExpanded = expandableRows && expandedRows.has(rowId);
 
-                    return (
-                      <td
-                        key={String(column.key) || colIndex}
-                        className={cn(column.width, column.className)}
-                      >
-                        {renderedValue}
+                return (
+                  <React.Fragment
+                    key={'id' in row ? String(row.id) : String(rowIndex)}
+                  >
+                    <tr
+                      className={cn(
+                        'cursor-pointer border-t border-zinc-200 transition hover:bg-zinc-50',
+                        'isAd' in row && Boolean(row.isAd)
+                          ? 'bg-amber-50/50'
+                          : '',
+                        highlightCondition?.(row) && highlightClassName,
+                      )}
+                      onClick={() => {
+                        if (expandableRows && onToggleRow) {
+                          onToggleRow(rowId);
+                        } else {
+                          onRowClick?.(row, rowIndex);
+                        }
+                      }}
+                    >
+                      {columns.map((column, colIndex) => {
+                        const value = row[column.key as keyof T];
+                        const renderedValue = renderCell(column, value, row);
+
+                        return (
+                          <td
+                            key={String(column.key) || colIndex}
+                            className={cn(column.width, column.className)}
+                          >
+                            {renderedValue}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    {/* json */}
+                    <tr key={`expanded-${rowId}`}>
+                      <td colSpan={columns.length}>
+                        <div
+                          className={cn(
+                            'w-full overflow-hidden transition-all duration-300 ease-in-out',
+                            isExpanded
+                              ? 'max-h-120 opacity-100'
+                              : 'max-h-0 opacity-0',
+                          )}
+                        >
+                          <div className='w-190 p-4'>
+                            {renderExpandedContent &&
+                              renderExpandedContent(row, rowIndex)}
+                          </div>
+                        </div>
                       </td>
-                    );
-                  })}
-                </tr>
-              ))
+                    </tr>
+                  </React.Fragment>
+                );
+              })
             ) : (
               <tr>
                 <td

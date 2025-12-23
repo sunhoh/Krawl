@@ -1,23 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { chromium } from 'playwright';
 
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const keyword = searchParams.get('keyword');
-    const engine = searchParams.get('engine');
-    const limit = parseInt(searchParams.get('limit') || '30', 10);
+    const body = await req.json();
+    const { keyword, engine, limit = 30 } = body;
 
     if (!keyword || !engine) {
       return NextResponse.json(
-        { error: 'keyword and engine are required in query parameters' },
+        { error: 'keyword and engine are required in request body' },
         { status: 400 },
       );
     }
 
     switch (engine) {
       case 'naver':
-        // 에러 방지를 위해 await를 붙여서 호출 결과를 반환합니다.
         return await handleNaverMap(keyword, limit);
       default:
         return NextResponse.json(
@@ -25,15 +22,16 @@ export async function GET(req: NextRequest) {
           { status: 400 },
         );
     }
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Unknown error occurred';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 async function handleNaverMap(keyword: string, limit: number) {
   let browser;
   try {
-    // 1. 브라우저 실행 (가급적 유저 에이전트를 최신으로 유지)
     browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({
       userAgent:
@@ -42,7 +40,7 @@ async function handleNaverMap(keyword: string, limit: number) {
     const page = await context.newPage();
 
     // 2. 검색 데이터 저장용 변수
-    let searchData: any[] = [];
+    let searchData: Record<string, unknown>[] = [];
 
     // [중요] page.goto 이전에 리스너를 먼저 등록해야 첫 응답을 안 놓칩니다.
     page.on('response', async response => {
@@ -56,7 +54,7 @@ async function handleNaverMap(keyword: string, limit: number) {
           if (list && list.length > 0) {
             searchData = list;
           }
-        } catch (e) {
+        } catch {
           // JSON 파싱 에러 무시
         }
       }
@@ -81,7 +79,10 @@ async function handleNaverMap(keyword: string, limit: number) {
       });
       const frame = await frameHandle.contentFrame();
       if (frame) {
-        await frame.mouse.wheel(0, 3000); // 강제 스크롤
+        // 강제 스크롤을 위해 페이지 하단으로 스크롤
+        await frame.evaluate(() => {
+          window.scrollTo(0, document.body.scrollHeight);
+        });
         await page.waitForTimeout(2000); // API 응답 대기
       }
     }
@@ -91,7 +92,7 @@ async function handleNaverMap(keyword: string, limit: number) {
     }
 
     // 6. 결과 가공 (순위 분석 척도 포함)
-    const result = searchData.slice(0, limit).map((item, index) => ({
+    const result = searchData.slice(0, limit).map(item => ({
       rank: item.rank,
       id: item.id,
       name: item.name,
@@ -101,16 +102,17 @@ async function handleNaverMap(keyword: string, limit: number) {
       blogReviewCount: item.blogReviewCount,
       rating: item.starPoint,
       address: item.address,
-      // 상세 분석을 위한 딥링크
       pcMapUrl: `https://pcmap.place.naver.com/hospital/${item.id}/home`,
     }));
 
     await browser.close();
     return NextResponse.json({ success: true, data: result, keyword });
-  } catch (error: any) {
+  } catch (error) {
     if (browser) await browser.close();
+    const message =
+      error instanceof Error ? error.message : 'Unknown error occurred';
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 },
     );
   }

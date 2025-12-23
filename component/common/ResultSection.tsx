@@ -1,31 +1,56 @@
+import { AsciiLoading } from '@/component/common/loading';
 import { JsonView } from '@/component/output/JsonView';
 import { SearchView } from '@/component/output/SearchView';
-import { Metadata, SearchRankData } from '@/types/global';
+import { Metadata } from '@/types/global';
+import { SearchRankData } from '@/types/table.type';
+
+interface SearchApiResponse {
+  success: boolean;
+  data: SearchRankData[];
+  keyword: string;
+}
 
 interface ResultSectionProps {
   activeTab: 'Scrape' | 'Search';
-  searchHistory: SearchRankData[];
-  scrapeHistory: Metadata[];
+  data:
+    | SearchApiResponse
+    | (Metadata & { requestUrl: string; scrapeId?: string })[]
+    | undefined;
+  loading: boolean;
 }
 
 export function ResultSection({
   activeTab,
-  searchHistory,
-  scrapeHistory,
+  data,
+  loading,
 }: ResultSectionProps) {
-  return (
-    <div className='mt-8 flex w-full flex-col gap-12 px-16'>
-      {activeTab === 'Search'
-        ? searchHistory.map((item, index) => (
-            <SearchView key={index} data={item} />
-          ))
-        : scrapeHistory.map((item, index) => (
-            <JsonView
-              key={item.scrapeId || index}
-              data={item}
-              value={item.requestUrl}
-            />
-          ))}
-    </div>
-  );
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'Search': {
+        const searchData = data as SearchApiResponse;
+        if (!searchData?.data || searchData?.data.length === 0) {
+          return null;
+        }
+        return <SearchView data={searchData} />;
+      }
+
+      case 'Scrape':
+        return (
+          data as (Metadata & { requestUrl: string; scrapeId?: string })[]
+        ).map((item, index) => (
+          <JsonView
+            key={item.scrapeId || `scrape-${index}`}
+            data={item}
+            value={item.requestUrl}
+          />
+        ));
+
+      default:
+        return null;
+    }
+  };
+
+  if (loading) return <AsciiLoading />;
+
+  return <div className='mt-8 flex w-full flex-col'>{renderContent()}</div>;
 }

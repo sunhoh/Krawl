@@ -21,6 +21,72 @@
 
 body {
   background: var(--background);
-  color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+@theme {
+  --animate-rainbow: rainbow 3s linear infinite;
+
+  --color-rainbow-gradient: linear-gradient(
+    to right,
+    #ff0000,
+    #ffbb00,
+    #eeff00,
+    #00ff00,
+    #0044ff,
+    #9d00ff,
+    #ff0000
+  );
+
+  @keyframes rainbow {
+    0% {
+      background-position: 0% 50%;
+    }
+    100% {
+      background-position: 200% 50%;
+    }
+  }
+}
+
+@theme {
+  --animate-rainbow-glow: rainbow-glow 3s linear infinite;
+
+  @keyframes rainbow-glow {
+    0% {
+      box-shadow:
+        0 0 10px #ff000066,
+        inset 0 0 5px #ff000033;
+      border-color: #ff0000aa;
+    }
+    20% {
+      box-shadow:
+        0 0 10px #eeff0066,
+        inset 0 0 5px #eeff0033;
+      border-color: #eeff00aa;
+    }
+    40% {
+      box-shadow:
+        0 0 10px #00ff0066,
+        inset 0 0 5px #00ff0033;
+      border-color: #00ff00aa;
+    }
+    60% {
+      box-shadow:
+        0 0 10px #0044ff66,
+        inset 0 0 5px #0044ff33;
+      border-color: #0044ffaa;
+    }
+    80% {
+      box-shadow:
+        0 0 10px #9d00ff66,
+        inset 0 0 5px #9d00ff33;
+      border-color: #9d00ffaa;
+    }
+    100% {
+      box-shadow:
+        0 0 10px #ff000066,
+        inset 0 0 5px #ff000033;
+      border-color: #ff0000aa;
+    }
+  }
 }

@@ -1,4 +1,4 @@
-import { ArrowRight, Globe } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 import { cn } from '@/libs/utils';
 
@@ -37,17 +37,43 @@ export default function BaseHead({
 
   return (
     <>
-      <div className='flex w-full flex-col items-center gap-4 rounded-2xl border border-gray-300 bg-white py-4 shadow-md'>
+      <div className='flex w-full flex-col items-center gap-4 overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white py-4 shadow-md'>
         {/* URL Input Section */}
-        <div className='flex w-full items-center gap-2 border-b border-gray-300 px-6 py-3'>
-          <Globe className='h-4 w-4 shrink-0 text-gray-400' />
+        <div className='relative flex w-full items-center gap-2 border-b border-gray-300 px-6 py-3'>
+          <div
+            className={cn(
+              'absolute top-1/2 left-6 -translate-y-1/2 transition-all duration-300 ease-out',
+              activeTab !== 'Search'
+                ? 'translate-x-0 opacity-100'
+                : '-translate-x-full opacity-0',
+            )}
+          >
+            <div className='flex items-center rounded-md border border-[#e5e7eb] px-2 py-1 text-xs font-medium text-green-700'>
+              https://
+            </div>
+          </div>
+
           <input
             type='text'
             value={value}
-            onChange={e => setValue(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && onClickRun()}
-            placeholder='https://example.com'
-            className='flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none'
+            onChange={e => {
+              const inputValue = e.target.value;
+              const cleanValue = inputValue.replace(/^https?:\/\//, '');
+              setValue(cleanValue);
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                activePortalTab === 'G' ? alert('준비중입니다.') : onClickRun();
+              }
+            }}
+            placeholder={
+              activeTab !== 'Search' ? 'example.com' : 'Please enter a keyword'
+            }
+            className={cn(
+              'flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 transition-all duration-300 ease-out outline-none',
+              activeTab !== 'Search' ? 'ml-16' : 'ml-0',
+            )}
           />
 
           {/* Portal Selector (only visible in Search mode) */}
@@ -111,7 +137,9 @@ export default function BaseHead({
           {/* Execute Button */}
           <button
             type='button'
-            onClick={onClickRun}
+            onClick={() => {
+              activePortalTab === 'G' ? alert('준비중입니다.') : onClickRun();
+            }}
             disabled={loading}
             className={cn(
               'flex h-12 w-20 cursor-pointer items-center justify-center rounded-2xl transition-all duration-200',

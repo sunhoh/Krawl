@@ -1,25 +1,21 @@
 import { Engine } from '@/types/global';
-import { SerpSnapshot } from '@/types/naver.type';
+import { SearchRankData } from '@/types/table.type';
 
-type SearchRequest = {
+interface SearchApiResponse {
+  success: boolean;
+  data: SearchRankData[];
   keyword: string;
-  engine: Engine;
-};
+}
 
 export const fetchSearchData = async (
   keyword: string,
   engine: Engine,
-): Promise<SerpSnapshot> => {
-  const params = new URLSearchParams({ keyword, engine });
-  const payload: SearchRequest = { keyword, engine };
-  const res = await fetch(`/api/search?${params.toString()}`, {
-    method: 'GET',
+): Promise<SearchApiResponse> => {
+  const res = await fetch('/api/search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keyword, engine }),
   });
-  // const res = await fetch('/api/search', {
-  //   method: 'GET',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify(payload),
-  // });
 
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || `Search failed: ${res.status}`);
